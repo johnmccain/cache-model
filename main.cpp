@@ -8,10 +8,14 @@
 #include <stdlib.h>
 #include <math.h>
 #include <cstdint>
+#include <random>
+#include <iostream>
 #define NUM_ENTRIES 67108864 //2^26
 #define CACHE_SIZE 32768 //32 * 2^10, in bytes
 #define CACHE_ENTRIES 512 // 32 * 2^10 / 2^6
 #define BLOCK_BITS 6
+
+using namespace std;
 
 int set_assoc;
 int index_bits;
@@ -36,7 +40,7 @@ uint32_t get_block(uint32_t address) {
 
 int main(int argc, char** argv)
 {
-	int hits = 0;
+	double hits = 0.0;
 
 	//Check if arguments are valid
 	if(argc != 3) {
@@ -46,7 +50,7 @@ int main(int argc, char** argv)
 
 	set_assoc = argv[1][0] - '0';
 
-	if(set_assoc % 2) {
+	if(set_assoc % 2 && set_assoc != 1) {
 		printf("Err: set associativity must be a power of 2\n");
 		return 1;
 	}
@@ -79,16 +83,49 @@ int main(int argc, char** argv)
 	//print out data read in
 	for(int i = 0; i < NUM_ENTRIES; ++i) {
 		int addr_line = get_index(data[i]) % cache_lines;
-		int addr_block = get_block(data[i]) % cache_blocks;
-		if(cache[addr_line][addr_block].address == data[i] && cache[addr_line][addr_block].valid) {
-			
+
+		bool hit = false;
+
+		//for each block in the corresponding cache set
+		for(int j = 0; j < set_assoc; ++j) {
+			//compare the tag associated with that block to the tag from the memory address
+			if(get_tag(cache[addr_line][j].address) == get_tag(data[i]) && cache[addr_line][j].valid) {
+				hit = true;
+				break;
+			}
 		}
 
-		printf("0x%08x\t", data[i]);
-		if(i % 4 == 0) printf("\n");
+		if(hit) {
+			hits++;
+		} else {
+			//cache miss, replace
+			bool stored = false;
+			//loop through to check for an invalid block to replace
+			for(int j = 0; j < set_assoc; ++j) {
+				//compare the tag associated with that block to the tag from the memory address
+				if(!cache[addr_line][j].valid) {
+					//found an invalid cache location, place there
+					cache[addr_line][j].address = data[i];
+					cache[addr_line][j].valid = true;
+					stored = true;
+					break;
+				}
+			}
+
+			if(!stored) {
+				//random replacement
+				int set_num = rand() % set_assoc;
+				cache[addr_line][set_num].address = data[i];
+			}
+		}
+
+		//printf("0x%08x\t", data[i]);
+		//if(i % 4 == 0) printf("\n");
 	}
 
 	free(data);
+
+	cout << hits / (double)NUM_ENTRIES << "\n";
 
 	return 0;
 }
