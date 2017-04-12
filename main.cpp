@@ -31,11 +31,11 @@ uint32_t get_tag(uint32_t address) {
 }
 
 uint32_t get_index(uint32_t address) {
-	return (address >> BLOCK_BITS) % (uint32_t) pow(2, index_bits);
+	return (address >> BLOCK_BITS) % (int) pow(2, index_bits);
 }
 
 uint32_t get_block(uint32_t address) {
-	return address % (uint32_t) pow(2, BLOCK_BITS);
+	return address % (int) pow(2, BLOCK_BITS);
 }
 
 int main(int argc, char** argv)
@@ -79,6 +79,8 @@ int main(int argc, char** argv)
 			cache[i][j].valid = false;
 		}
 	}
+
+	printf("spoopy\n");
 
 	//print out data read in
 	for(int i = 0; i < NUM_ENTRIES; ++i) {
