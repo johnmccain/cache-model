@@ -5,15 +5,19 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <ctime>
 
+using namespace std;
 int main()
 {
 	uint32_t a;
-	std::vector<uint32_t> data;
-	//uint32_t data [64000000];
-	int offset = 0;
-	
-	std::ifstream file("AddressTrace_FirstIndex.bin",std::ifstream::binary);
+	clock_t start;
+	double duration;
+	vector<uint32_t> data;
+	//int offset = 0;
+
+	start = std::clock();
+	ifstream file("AddressTrace_FirstIndex.bin",std::ifstream::binary);
 
 	if(file.is_open())
 	{
@@ -23,5 +27,11 @@ int main()
 		}
 	}
 	file.close();
+	duration = (clock() - start) / (double) CLOCKS_PER_SEC;
+	cout << duration << "\n";
+
+
+
+
 	return 0;
 }
