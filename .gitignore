@@ -34,3 +34,5 @@
 AddressTrace_LastIndex.bin
 AddressTrace_FirstIndex.bin
 AddressTrace_RandomIndex.bin
+
+remote-sync.json
