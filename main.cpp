@@ -78,6 +78,12 @@ int main(int argc, char** argv)
 
 	//print out data read in
 	for(int i = 0; i < NUM_ENTRIES; ++i) {
+		int addr_line = get_index(data[i]) % cache_lines;
+		int addr_block = get_block(data[i]) % cache_blocks;
+		if(cache[addr_line][addr_block].address == data[i] && cache[addr_line][addr_block].valid) {
+			
+		}
+
 		printf("0x%08x\t", data[i]);
 		if(i % 4 == 0) printf("\n");
 	}
