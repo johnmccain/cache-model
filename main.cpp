@@ -9,7 +9,8 @@
 #include <math.h>
 #include <cstdint>
 #define NUM_ENTRIES 67108864 //2^26
-#define CACHE_SIZE 32768 //32 * 2^10
+#define CACHE_SIZE 32768 //32 * 2^10, in bytes
+#define CACHE_ENTRIES 512 // 32 * 2^10 / 2^6
 #define BLOCK_BITS 6
 
 int set_assoc;
@@ -19,7 +20,7 @@ typedef struct entry
 {
 	uint32_t address;
 	bool valid;
-} entry;
+} entry_t;
 
 uint32_t get_tag(uint32_t address) {
 	return (address >> (BLOCK_BITS + index_bits));
@@ -45,13 +46,17 @@ int main(int argc, char** argv)
 
 	set_assoc = argv[1][0] - '0';
 
-	index_bits = CACHE_SIZE / (pow(2, BLOCK_BITS) * pow(2, set_assoc - 1));
+	if(set_assoc % 2) {
+		printf("Err: set associativity must be a power of 2\n");
+		return 1;
+	}
 
 	if(set_assoc < 1) {
 		printf("Err: set associativity must be at least 1\n");
 		return 1;
 	}
 
+	index_bits = CACHE_SIZE / (pow(2, BLOCK_BITS) * pow(2, set_assoc - 1));
 	char* file_name = argv[2];
 	FILE *input_file = fopen(file_name, "rb");
 
@@ -59,6 +64,17 @@ int main(int argc, char** argv)
 	uint32_t *data = (uint32_t *) malloc((sizeof(uint32_t) * NUM_ENTRIES) + sizeof(char));
 	fread(data, (NUM_ENTRIES * 4), 1, input_file);
 	fclose(input_file);
+
+	//create the cache
+	int cache_lines = CACHE_ENTRIES / set_assoc;
+	int cache_blocks = set_assoc;
+	entry_t **cache = new entry_t*[cache_lines];
+	for(int i = 0; i < cache_lines; ++i) {
+		cache[i] = new entry_t[cache_blocks];
+		for(int j = 0; j < cache_blocks; ++j) {
+			cache[i][j].valid = false;
+		}
+	}
 
 	//print out data read in
 	for(int i = 0; i < NUM_ENTRIES; ++i) {
