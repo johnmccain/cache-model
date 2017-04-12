@@ -15,6 +15,12 @@
 int set_assoc;
 int index_bits;
 
+typedef struct entry
+{
+	uint32_t address;
+	bool valid;
+} entry;
+
 uint32_t get_tag(uint32_t address) {
 	return (address >> (BLOCK_BITS + index_bits));
 }
