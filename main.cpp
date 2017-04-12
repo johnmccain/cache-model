@@ -29,6 +29,8 @@ uint32_t get_block(uint32_t address) {
 
 int main(int argc, char** argv)
 {
+	int hits = 0;
+
 	//Check if arguments are valid
 	if(argc != 3) {
 		printf("Usage: ./cache_sim <set_assoc (1 or 2)> <binary_file_name>\n");
