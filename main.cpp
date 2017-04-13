@@ -49,12 +49,6 @@ uint32_t change_endianness(uint32_t bytes) {
 	return swap.i;
 }
 
-//for testing
-uint32_t dec_to_bin(uint32_t val) {
-
-	return (val == 0) ? 0 : (val % 2) + (10 * dec_to_bin(val / 2));
-}
-
 uint32_t get_tag(uint32_t address) {
 	uint32_t tag = address >> (BLOCK_BITS + index_bits);
 	uint32_t mask = (int) pow(2, BLOCK_BITS + index_bits) - 1;
