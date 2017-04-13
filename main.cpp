@@ -16,7 +16,7 @@
 #define BLOCK_BITS 6
 
 #define DEBUG 0
-#define DEBUG_CACHE 1
+#define DEBUG_CACHE 0
 
 using namespace std;
 
@@ -138,8 +138,8 @@ int main(int argc, char** argv)
 	//fix byte-level endianness
 	//we do this because the data is little endian, and our cache likes big endian addresses
 	for(int i = 0; i < 10; ++i) {
-		data[i] = little_endian_to_big_endian(data[i]);
 
+		//for each block in the c
 		#if DEBUG
 		int tag = get_tag(data[i]);
 		int index = get_index(data[i]);
@@ -150,22 +150,15 @@ int main(int argc, char** argv)
 
 	printf("fixed byte-level endianness\n");
 
-	for(int i = 0; i < 32; ++i) {
+	for(int i = 0; i < NUM_ENTRIES; ++i) {
 		// printf("%032u\t", data[i]);
 		int tag = get_tag(data[i]);
 		int index = get_index(data[i]);
 		int block = get_block(data[i]);
 		// printf("%032u\t", data[i]);
 
-		int addr_line = get_index(data[i]) % cache_lines;
 
-		#if DEBUG_CACHE
-		printf("\n------------------------\n");
-
-		printf("ADDR %d: %u: %u  %u  %u\n", i, data[i], get_tag(data[i]), get_index(data[i]), get_block(data[i]));
-		show_cache_line(cache[addr_line]);
-		#endif
-
+		int addr_line = index % set_assoc;
 		bool hit = false;
 
 		//for each block in the corresponding cache set
@@ -216,7 +209,7 @@ int main(int argc, char** argv)
 	free(data);
 
 	printf("hits: %u\n", hits);
-	printf("hit ratio: %f%%\n", ((double) hits) / NUM_ENTRIES);
+	printf("hit ratio: %f%%\n", ((double) hits * 10) / NUM_ENTRIES);
 
 	return 0;
 }

@@ -36,3 +36,6 @@ AddressTrace_FirstIndex.bin
 AddressTrace_RandomIndex.bin
 
 remote-sync.json
+cache_sim
+cache_sim.out
+cache_sim.exe

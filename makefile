@@ -1,4 +1,4 @@
-all: clean cache_sim
+all: cache_sim
 
 cache_sim:
 	g++ -std=c++11 -Wall -g main.cpp -o cache_sim
