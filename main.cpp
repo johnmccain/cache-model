@@ -209,7 +209,7 @@ int main(int argc, char** argv)
 	free(data);
 
 	printf("hits: %u\n", hits);
-	printf("hit ratio: %f%%\n", ((double) hits * 10) / NUM_ENTRIES);
+	printf("hit ratio: %f%%\n", ((double) hits * 100) / NUM_ENTRIES);
 
 	return 0;
 }
