@@ -15,10 +15,19 @@
 #define CACHE_ENTRIES 512 // 32 * 2^10 / 2^6
 #define BLOCK_BITS 6
 
+#define DEBUG 0
+#define DEBUG_CACHE 1
+
 using namespace std;
 
 int set_assoc;
 int index_bits;
+
+//used for fixing endianness
+union Swapperoo {
+	uint32_t i;
+	uint8_t b[4];
+};
 
 typedef struct entry
 {
@@ -26,30 +35,60 @@ typedef struct entry
 	bool valid;
 } entry_t;
 
+uint32_t little_endian_to_big_endian(uint32_t bytes) {
+	union Swapperoo swap;
+	swap.i = bytes;
+	uint8_t tmp = swap.b[0];
+	swap.b[0] = swap.b[3];
+	swap.b[3] = tmp;
+	tmp = swap.b[1];
+	swap.b[1] = swap.b[2];
+	swap.b[2] = tmp;
+	return swap.i;
+}
+
 //for testing
-uint32_t to_binary(uint32_t val) {
-	if(val == 0) {
+uint32_t dec_to_bin(uint32_t val) {
 
-	} else {
-
-	}
-	return (val == 0) ? 0 : (val % 2) + (10 * to_binary(val / 2));
+	return (val == 0) ? 0 : (val % 2) + (10 * dec_to_bin(val / 2));
 }
 
 uint32_t get_tag(uint32_t address) {
 	uint32_t tag = address >> (BLOCK_BITS + index_bits);
 	uint32_t mask = (int) pow(2, BLOCK_BITS + index_bits) - 1;
-	return tag & mask;
+	tag = tag & mask;
+
+	#if DEBUG
+	printf("tag(%u) = tag0(%u) & mask(%u)\n", tag, address >> (BLOCK_BITS + index_bits), mask);
+	#endif
+	return tag;
 }
 
 uint32_t get_index(uint32_t address) {
 	uint32_t mask = (int) pow(2, index_bits) - 1;
-	return (address >> BLOCK_BITS) & mask;
+	uint32_t index = (address >> BLOCK_BITS) & mask;
+
+	#if DEBUG
+	printf("index(%u) = index0(%u) & mask(%u)\n", index, address >> (BLOCK_BITS), mask);
+	#endif
+	return index;
 }
 
 uint32_t get_block(uint32_t address) {
 	uint32_t mask = (int) pow(2, BLOCK_BITS) - 1;
-	return address & mask;
+	uint32_t block = address & mask;
+
+	#if DEBUG
+	printf("block(%u) = address(%u) & mask(%u)\n", block, address, mask);
+	#endif
+	return block;
+}
+
+//for debugging
+void show_cache_line(entry_t *line) {
+	for(int j = 0; j < set_assoc; ++j) {
+		printf("%d:\n\t%d | %u  %u  %u\n", j, line[j].valid, get_tag(line[j].address), get_index(line[j].address), get_block(line[j].address));
+	}
 }
 
 int main(int argc, char** argv)
@@ -74,9 +113,11 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	index_bits = CACHE_SIZE / (pow(2, BLOCK_BITS) * pow(2, set_assoc - 1));
+	index_bits = log2(CACHE_SIZE / (pow(2, BLOCK_BITS) * pow(2, set_assoc - 1)));
 	char* file_name = argv[2];
 	FILE *input_file = fopen(file_name, "rb");
+
+	printf("index_bits = %d\n", index_bits);
 
 	//allocate space for entries on the heap. Sizeof(char) is a null terminator, because malloc is a C function
 	uint32_t *data = (uint32_t *) malloc((sizeof(uint32_t) * NUM_ENTRIES) + sizeof(char));
@@ -94,15 +135,36 @@ int main(int argc, char** argv)
 		}
 	}
 
-	//print out data read in
-	for(int i = 0; i < NUM_ENTRIES; ++i) {
+	//fix byte-level endianness
+	//we do this because the data is little endian, and our cache likes big endian addresses
+	for(int i = 0; i < 10; ++i) {
+		data[i] = little_endian_to_big_endian(data[i]);
 
+		#if DEBUG
 		int tag = get_tag(data[i]);
 		int index = get_index(data[i]);
 		int block = get_block(data[i]);
-		// printf("%032u\ntag\t%032u\nind\t%032u\nblo\t%032u\n", to_binary(data[i]), to_binary(tag), to_binary(index), to_binary(block));
+		printf("%032u\ntag\t%032u\nind\t%032u\nblo\t%032u\n", dec_to_bin(data[i]), dec_to_bin(tag), dec_to_bin(index), dec_to_bin(block));
+		#endif
+	}
+
+	printf("fixed byte-level endianness\n");
+
+	for(int i = 0; i < 32; ++i) {
+		// printf("%032u\t", data[i]);
+		int tag = get_tag(data[i]);
+		int index = get_index(data[i]);
+		int block = get_block(data[i]);
+		// printf("%032u\t", data[i]);
 
 		int addr_line = get_index(data[i]) % cache_lines;
+
+		#if DEBUG_CACHE
+		printf("\n------------------------\n");
+
+		printf("ADDR %d: %u: %u  %u  %u\n", i, data[i], get_tag(data[i]), get_index(data[i]), get_block(data[i]));
+		show_cache_line(cache[addr_line]);
+		#endif
 
 		bool hit = false;
 
@@ -111,13 +173,16 @@ int main(int argc, char** argv)
 			//compare the tag associated with that block to the tag from the memory address
 			if(get_tag(cache[addr_line][j].address) == get_tag(data[i]) && cache[addr_line][j].valid) {
 				hit = true;
-				printf("hit!\n");
 				break;
 			}
 		}
 
 		if(hit) {
 			hits++;
+			#if DEBUG_CACHE
+			printf("HIT\n");
+			printf("\n------------------------\n");
+			#endif
 		} else {
 			//cache miss, replace
 			bool stored = false;
@@ -139,6 +204,12 @@ int main(int argc, char** argv)
 				cache[addr_line][set_num].address = data[i];
 				cache[addr_line][set_num].valid = true;
 			}
+			#if DEBUG_CACHE
+			printf("MISS\n");
+			show_cache_line(cache[addr_line]);
+			printf("\n------------------------\n");
+
+			#endif
 		}
 	}
 
