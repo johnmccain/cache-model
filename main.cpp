@@ -26,21 +26,35 @@ typedef struct entry
 	bool valid;
 } entry_t;
 
+//for testing
+uint32_t to_binary(uint32_t val) {
+	if(val == 0) {
+
+	} else {
+
+	}
+	return (val == 0) ? 0 : (val % 2) + (10 * to_binary(val / 2));
+}
+
 uint32_t get_tag(uint32_t address) {
-	return (address >> (BLOCK_BITS + index_bits));
+	uint32_t tag = address >> (BLOCK_BITS + index_bits);
+	uint32_t mask = (int) pow(2, BLOCK_BITS + index_bits) - 1;
+	return tag & mask;
 }
 
 uint32_t get_index(uint32_t address) {
-	return (address >> BLOCK_BITS) % (int) pow(2, index_bits);
+	uint32_t mask = (int) pow(2, index_bits) - 1;
+	return (address >> BLOCK_BITS) & mask;
 }
 
 uint32_t get_block(uint32_t address) {
-	return address % (int) pow(2, BLOCK_BITS);
+	uint32_t mask = (int) pow(2, BLOCK_BITS) - 1;
+	return address & mask;
 }
 
 int main(int argc, char** argv)
 {
-	double hits = 0.0;
+	uint32_t hits = 0;
 
 	//Check if arguments are valid
 	if(argc != 3) {
@@ -80,10 +94,14 @@ int main(int argc, char** argv)
 		}
 	}
 
-	printf("spoopy\n");
-
 	//print out data read in
 	for(int i = 0; i < NUM_ENTRIES; ++i) {
+
+		int tag = get_tag(data[i]);
+		int index = get_index(data[i]);
+		int block = get_block(data[i]);
+		// printf("%032u\ntag\t%032u\nind\t%032u\nblo\t%032u\n", to_binary(data[i]), to_binary(tag), to_binary(index), to_binary(block));
+
 		int addr_line = get_index(data[i]) % cache_lines;
 
 		bool hit = false;
@@ -93,6 +111,7 @@ int main(int argc, char** argv)
 			//compare the tag associated with that block to the tag from the memory address
 			if(get_tag(cache[addr_line][j].address) == get_tag(data[i]) && cache[addr_line][j].valid) {
 				hit = true;
+				printf("hit!\n");
 				break;
 			}
 		}
@@ -118,16 +137,15 @@ int main(int argc, char** argv)
 				//random replacement
 				int set_num = rand() % set_assoc;
 				cache[addr_line][set_num].address = data[i];
+				cache[addr_line][set_num].valid = true;
 			}
 		}
-
-		//printf("0x%08x\t", data[i]);
-		//if(i % 4 == 0) printf("\n");
 	}
 
 	free(data);
 
-	cout << hits / (double)NUM_ENTRIES << "\n";
+	printf("hits: %u\n", hits);
+	printf("hit ratio: %f%%\n", ((double) hits) / NUM_ENTRIES);
 
 	return 0;
 }
